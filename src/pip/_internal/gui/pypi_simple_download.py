@@ -56,6 +56,7 @@ def download(url:str) -> str:
     with urllib.request.urlopen(url) as f:
         return f.read().decode("utf-8")
 
+
 class ThreadDownload(threading.Thread):
     def __init__(self, pkgname:str):
         threading.Thread.__init__(self)
@@ -68,7 +69,9 @@ class ThreadDownload(threading.Thread):
         if simple is None:
             simple = g.pypi_simples[name] = PypiSimple(name)
         else:
-            if simple.ready: return
+            if not simple.ready:
+                # print("downloading ...", simple.name)
+                return
 
         resp = download(simple.url)
         if resp is not None:
@@ -82,7 +85,10 @@ class ThreadDownload(threading.Thread):
                 # print(name, ":", href, requires)
                 simple.content.append(name)
             simple.ready = True
+            print("download done", simple.name)
             g.pypi_simples_event.set()
+        else:
+            del g.pypi_simples[name]  # download failed
 
 
 if __name__ == '__main__':
