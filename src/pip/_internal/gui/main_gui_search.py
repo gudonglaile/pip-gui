@@ -129,24 +129,6 @@ class MainWnd(tk.Frame):
         self.star.config(text=self.starv)
         self.on_key(None)
 
-    def lookup_dict_fake(self, s):
-        if not s:
-            return self.home_index()
-        with open(r"D:\_hack\yzw\dict\cetsix.txt", "r", encoding='utf-8') as f:
-            if self.starv == '*':
-                pt = re.compile("(\d+)\|(\w*?%s\w*)" % s)
-            else:
-                pt = re.compile("(\d+)\|(%s\w*)" % s)
-            cnt = 0
-            a = []
-            for line in f:
-                m = pt.match(line)
-                if not m: continue
-                a.append(m.group(2))
-                cnt += 1
-                if cnt >= 30: break
-        return a
-
     def lookup_dict(self, s:str):
         if not s:
             return self.home_index()
