@@ -7,13 +7,16 @@ import re
 import tkinter as tk
 from collections import deque
 
+from pip._internal.operations.check import (
+    check_package_set,
+    create_package_set_from_installed,
+)
 
-def pypi_index_load():
-    d = dict()
-    for line in open(PYPI_INDEX_DAT):
-        name, href = line.split(" ", maxsplit=1)
-        d[name] = href
-    return d
+
+def package_set_load():
+    package_set, parsing_probs = create_package_set_from_installed()
+    missing, conflicting = check_package_set(package_set)
+    return package_set
 
 
 class MainWnd(tk.Frame):
@@ -126,7 +129,8 @@ class MainWnd(tk.Frame):
 
     def lookup_dict(self, s:str):
         if not s:
-            return self.home_index()
+            return sorted(g.yindex_d.keys())
+
         cnt = 0
         a = []
         s = s.lower()
@@ -176,52 +180,34 @@ class MainWnd(tk.Frame):
         k = self.lba[i]
 
         if k == 'help': self.home_help(); return
-        if k == 'todo': self.home_todo(); return
 
         if self.text_ready == k: return
 
         self.text.delete(1.0, tk.END)
-        simple = g.pypi_simples.get(k, None)  #type: PypiSimple
-        if simple is None or not simple.ready:
-            self.text.insert(tk.END, "downloading %s.. " % k, "ydoc")
-            ThreadDownload(k).start()
-            self.text_ready = ""
-        else:
-            # text = pprint.pformat(simple.versions)
-            for ver in simple.versions_sorted:
-                self.text.insert(tk.END, ver + '\n', "h1")
-                for pkginfo in simple.versions[ver]:
-                    self.text.insert(tk.END, pkginfo.name + '\n', "hyper")
-                    self.text.insert(tk.END, pkginfo.url + '\n')
-                    if pkginfo.requires:
-                        self.text.insert(tk.END, pkginfo.requires + '\n')
-                self.text.insert(tk.END, '\n')
+        pkgd = g.yindex_d.get(k, None)  # type: PackageDeails
+        print(pkgd)
+        self.text.insert(tk.END, k + " " + pkgd.version + '\n\n', "h2")
 
-            self.text_ready = k
-
-        self.text.see(tk.END)
+        if not pkgd.requires:
+            self.text.insert(tk.END, "no depends\n")
+            return
+        for require in pkgd.requires:
+            name = require.name
+            self.text.insert(tk.END, name + '\n', "hyper")
+            self.text.insert(tk.END, "specifier: " + str(require.specifier) + '\n')
+            self.text.insert(tk.END, "project_name: " + require.project_name + '\n')
+            self.text.insert(tk.END, "unsafe_name: " + require.unsafe_name + '\n')
+            self.text.insert(tk.END, '\n')
 
 
-class ThreadEvent(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self.daemon = True
-
-    def run(self):
-        while g.pypi_simples_event.wait():
-            g.wnd.on_sel(None)
-            g.pypi_simples_event.clear()
-
-
-def main_gui_search():
-    g.yindex_d = pypi_index_load()
+def main_gui_depends():
+    g.yindex_d = package_set_load()
     root = tk.Tk()
-    root.title("pip gui_search")
+    root.title("pip gui_depends")
     wnd = MainWnd(master=root)
     g.wnd = wnd
-    ThreadEvent().start()
     wnd.mainloop()
 
 
 if __name__ == "__main__":
-    main_gui_search()
+    main_gui_depends()
