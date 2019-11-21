@@ -24,6 +24,7 @@ from pip._internal.utils.compat import get_terminal_size
 from pip._internal.utils.logging import indent_log
 from pip._internal.utils.misc import write_output
 
+from pip._internal.gui.main_gui_search import main_gui_search
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,8 @@ class GuiSearchCommand(Command, SessionCommandMixin):
         self.parser.insert_option_group(0, self.cmd_opts)
 
     def run(self, options, args):
-        write_output("gui_search works")
+        # write_output("gui_search works")
+        main_gui_search()
         return SUCCESS
 
 
