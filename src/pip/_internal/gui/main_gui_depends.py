@@ -30,7 +30,7 @@ class MainWnd(tk.Frame):
         self.columnconfigure(col_r, weight=1)
         self.rowconfigure(1, weight=1)
 
-        self.index = tk.Label(self, text="index:")
+        self.index = tk.Label(self, text="back")
         self.index.bind("<Double-Button-1>", self.on_index_double_click)
         self.index.bind("<Button-1>", self.on_index_click)
         self.index.grid()
@@ -50,7 +50,6 @@ class MainWnd(tk.Frame):
         self.lb.grid(row=1, column=0, columnspan=2, sticky="nsew")
         self.lb.bind("<ButtonRelease-1>", self.on_sel)
 
-        self.text_ready = ""
         self.text = tk.Text(self, height=38, width=100)
         self.text.grid(row=0, column=col_r, rowspan=2, padx=3, sticky="nsew")
         scroll = tk.Scrollbar(self, command=self.text.yview)
@@ -65,8 +64,10 @@ class MainWnd(tk.Frame):
         self.text.tag_config("h2", foreground="black", font=(fontname, 18, 'bold'))
         self.text.tag_config("hyper", foreground="blue", underline=1, font=(fontname, 12, 'bold'))
 
+        self.text.tag_config("depends", foreground="blue", underline=1, font=(fontname, 12, 'bold'))
+        self.text.tag_bind("depends", "<Button-1>", self.on_depends)
+
         self.text.tag_config("help1", foreground="blue", font=(fontname, 14))
-        # self.text.tag_bind("ydoc", "<Button-1>", self.on_ydoc)
 
         self.text.tag_config("y", foreground="blue", underline=1)
         # self.text.tag_bind("y", "<Button-1>", self.on_y)
@@ -101,16 +102,42 @@ class MainWnd(tk.Frame):
 
         self.text.insert(tk.END, "\n")
 
+    def hist_append(self, k):
+        if not k: return
+        if self.hist:
+            lastk = self.hist[-1]
+            if k.startswith(lastk):
+                self.hist[-1] = k
+            elif not lastk.startswith(k):
+                self.hist.append(k)
+            else:
+                pass
+        else:
+            self.hist.append(k)
+        print("hist_append:", self.hist)
+
+    def hist_pop(self):
+        print("hist_pop:", self.hist)
+        if len(self.hist) < 1: return None
+        return self.hist.pop()
+
+    def on_depends(self, event):
+        t = event.widget  # 就是Text控件
+        tr = t.tag_prevrange("depends", tk.CURRENT + '+1c')
+        print(tr[0], tr[1])
+        cmd = t.get(tr[0], tr[1])  # 返回该区间的文本
+        print("num=%s cmd=<%s>\n" % (event.num, cmd))
+        self.evar.set(cmd)
+        self.on_key(None, nodist=True)
+
     def on_index_click(self, event):
         """
         点击index标签
         """
-        print(self.hist)
-        if len(self.hist) < 1: return
-        k = self.hist.pop()
-        print("pop", k)
+        k = self.hist_pop()
+        if k is None: return
         self.evar.set(k)
-        self.on_key(None)
+        self.on_key(None, nodist=True)
 
     def on_index_double_click(self, event):
         """
@@ -145,32 +172,21 @@ class MainWnd(tk.Frame):
             if cnt >= 50: break
         return sorted(a)
 
-    def on_key(self, _):
+    def on_key(self, _, nodist=False):
         """
         用户输入新的key
         """
 
         k = self.e.get()
-        if _ is not None and k:
-            if self.hist:
-                lastk = self.hist[-1]
-                if k.startswith(lastk):
-                    self.hist[-1] = k
-                elif not lastk.startswith(k):
-                    self.hist.append(k)
-                else:
-                    pass
-            else:
-                self.hist.append(k)
-        print(self.hist)
+        if not nodist: self.hist_append(k)
 
         self.lba = self.lookup_dict(k)
         self.lb.delete(0, tk.END)
         self.lb.insert(0, *self.lba)
         self.lb.select_set(0)
-        self.on_sel(None)
+        self.on_sel(None, nodist)
 
-    def on_sel(self, _):
+    def on_sel(self, _, nodist=False):
         """
         用户选择列表中的项目
         """
@@ -178,10 +194,9 @@ class MainWnd(tk.Frame):
         if not sel: return
         i = sel[0]
         k = self.lba[i]
+        if not nodist: self.hist_append(k)
 
         if k == 'help': self.home_help(); return
-
-        if self.text_ready == k: return
 
         self.text.delete(1.0, tk.END)
         pkgd = g.yindex_d.get(k, None)  # type: PackageDeails
@@ -193,7 +208,8 @@ class MainWnd(tk.Frame):
             return
         for require in pkgd.requires:
             name = require.name
-            self.text.insert(tk.END, name + '\n', "hyper")
+            self.text.insert(tk.END, name, "depends")
+            self.text.insert(tk.END, "\n")
             self.text.insert(tk.END, "specifier: " + str(require.specifier) + '\n')
             self.text.insert(tk.END, "project_name: " + require.project_name + '\n')
             self.text.insert(tk.END, "unsafe_name: " + require.unsafe_name + '\n')
