@@ -84,6 +84,10 @@ commands_dict = OrderedDict([
         'pip._internal.commands.help', 'HelpCommand',
         'Show help for commands.',
     )),
+    ('gui_search', CommandInfo(
+        'pip._internal.commands.gui_search', 'GuiSearchCommand',
+        'Search and download GUI.',
+    )),
 ])  # type: OrderedDict[str, CommandInfo]
 
 
