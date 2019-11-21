@@ -79,7 +79,7 @@ class ThreadDownload(threading.Thread):
                 href = m.group("href")
                 requires = m.group("requires")
                 name = m.group("name")
-                print(name, ":", href, requires)
+                # print(name, ":", href, requires)
                 simple.content.append(name)
             simple.ready = True
             g.pypi_simples_event.set()
