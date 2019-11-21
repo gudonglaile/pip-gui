@@ -59,10 +59,15 @@ class MainWnd(tk.Frame):
         self.text.configure(yscrollcommand=scroll.set)
         scroll.grid(row=0, column=col_r + 1, rowspan=2, sticky="ns")
 
-        self.text.tag_config("version", foreground="black", font=(u'宋体', 14))
-        self.text.tag_config("download", foreground="blue", underline=1, font=(u'宋体', 12))
+        fontname = 'Verdana'
+        self.text.tag_config("version", foreground="black", font=(fontname, 14))
+        self.text.tag_config("download", foreground="blue", underline=1, font=(fontname, 12))
 
-        self.text.tag_config("help1", foreground="blue", font=(u'宋体', 12))
+        self.text.tag_config("h1", foreground="black", font=(fontname, 24, 'bold'))
+        self.text.tag_config("h2", foreground="black", font=(fontname, 18, 'bold'))
+        self.text.tag_config("hyper", foreground="blue", underline=1, font=(fontname, 12, 'bold'))
+
+        self.text.tag_config("help1", foreground="blue", font=(fontname, 14))
         # self.text.tag_bind("ydoc", "<Button-1>", self.on_ydoc)
 
         self.text.tag_config("y", foreground="blue", underline=1)
@@ -205,11 +210,19 @@ class MainWnd(tk.Frame):
             ThreadDownload(k).start()
             self.text_ready = ""
         else:
-            text = pprint.pformat(simple.content)
-            self.text.insert(tk.END, text)
+            # text = pprint.pformat(simple.versions)
+            for ver in simple.versions_sorted:
+                self.text.insert(tk.END, ver + '\n', "h1")
+                for pkginfo in simple.versions[ver]:
+                    self.text.insert(tk.END, pkginfo.name + '\n', "hyper")
+                    self.text.insert(tk.END, pkginfo.url + '\n')
+                    if pkginfo.requires:
+                        self.text.insert(tk.END, pkginfo.requires + '\n')
+                self.text.insert(tk.END, '\n')
+
             self.text_ready = k
 
-        # self.text.see(tk.END)
+        self.text.see(tk.END)
 
 
 class ThreadEvent(threading.Thread):
@@ -226,7 +239,7 @@ class ThreadEvent(threading.Thread):
 def main_gui_search():
     g.yindex_d = pypi_index_load()
     root = tk.Tk()
-    root.title("pip")
+    root.title("pip-gui")
     wnd = MainWnd(master=root)
     g.wnd = wnd
     ThreadEvent().start()
