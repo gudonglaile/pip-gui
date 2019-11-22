@@ -31,8 +31,8 @@ class MainWnd(tk.Frame):
         self.rowconfigure(1, weight=1)
 
         self.index = tk.Label(self, text="back")
-        self.index.bind("<Double-Button-1>", self.on_index_double_click)
-        self.index.bind("<Button-1>", self.on_index_click)
+        self.index.bind("<Double-Button-1>", self.on_back_double_click)
+        self.index.bind("<Button-1>", self.on_back_click)
         self.index.grid()
 
         self.evar = tk.StringVar()
@@ -84,24 +84,6 @@ class MainWnd(tk.Frame):
         self.text.insert(tk.END, 'TODO')
         self.text.insert(tk.END, "\n")
 
-    def home_help(self):
-        self.text.delete(1.0, tk.END)
-
-        self.text.insert(tk.END, "\n\n")
-
-        self.text.insert(tk.END, 'click on label "index:" left to the input box:\n', 'help1')
-        self.text.insert(tk.END, "back to last key\n\n")
-
-        self.text.insert(tk.END, 'click on label ">" right to the input box:\n', 'help1')
-        self.text.insert(tk.END, "switch to substr mode\n\n")
-
-        self.text.insert(tk.END, 'click on label "*" right to the input box:\n', 'help1')
-        self.text.insert(tk.END, "switch to startswith mode\n\n")
-
-        self.text.insert(tk.END, "\n")
-
-        self.text.insert(tk.END, "\n")
-
     def hist_append(self, k):
         if not k: return
         if self.hist:
@@ -125,21 +107,22 @@ class MainWnd(tk.Frame):
         t = event.widget  # 就是Text控件
         tr = t.tag_prevrange("depends", tk.CURRENT + '+1c')
         print(tr[0], tr[1])
-        cmd = t.get(tr[0], tr[1])  # 返回该区间的文本
+        cmd = t.get(tr[0], tr[1]).lower()  # 返回该区间的文本
         print("num=%s cmd=<%s>\n" % (event.num, cmd))
         self.evar.set(cmd)
-        self.on_key(None, nodist=True)
+        self.on_key(None)
 
-    def on_index_click(self, event):
+    def on_back_click(self, event):
         """
         点击index标签
         """
-        k = self.hist_pop()
+        self.hist_pop()      # current one
+        k = self.hist_pop()  # last one
         if k is None: return
         self.evar.set(k)
-        self.on_key(None, nodist=True)
+        self.on_key(None)
 
-    def on_index_double_click(self, event):
+    def on_back_double_click(self, event):
         """
         双击index标签
         """
@@ -172,21 +155,25 @@ class MainWnd(tk.Frame):
             if cnt >= 50: break
         return sorted(a)
 
-    def on_key(self, _, nodist=False):
+    def on_key(self, _):
         """
         用户输入新的key
         """
 
         k = self.e.get()
-        if not nodist: self.hist_append(k)
+        if k == 'help':
+            self.render_help()
+            return
+
+        self.hist_append(k)
 
         self.lba = self.lookup_dict(k)
         self.lb.delete(0, tk.END)
         self.lb.insert(0, *self.lba)
         self.lb.select_set(0)
-        self.on_sel(None, nodist)
+        self.on_sel(None)
 
-    def on_sel(self, _, nodist=False):
+    def on_sel(self, _):
         """
         用户选择列表中的项目
         """
@@ -194,10 +181,33 @@ class MainWnd(tk.Frame):
         if not sel: return
         i = sel[0]
         k = self.lba[i]
-        if not nodist: self.hist_append(k)
+        self.hist_append(k)
 
-        if k == 'help': self.home_help(); return
+        if k == 'help':
+            self.render_help()
+            return
 
+        self.render_package(k)
+
+    def render_help(self):
+        self.text.delete(1.0, tk.END)
+
+        self.text.insert(tk.END, "\n\n")
+
+        self.text.insert(tk.END, 'click on label "back" left to the input box:\n', 'help1')
+        self.text.insert(tk.END, "back to last key\n\n")
+
+        self.text.insert(tk.END, 'click on label ">" right to the input box:\n', 'help1')
+        self.text.insert(tk.END, "switch to substr mode\n\n")
+
+        self.text.insert(tk.END, 'click on label "*" right to the input box:\n', 'help1')
+        self.text.insert(tk.END, "switch to startswith mode\n\n")
+
+        self.text.insert(tk.END, "\n")
+
+        self.text.insert(tk.END, "\n")
+
+    def render_package(self, k):
         self.text.delete(1.0, tk.END)
         pkgd = g.yindex_d.get(k, None)  # type: PackageDeails
         print(pkgd)
@@ -214,7 +224,6 @@ class MainWnd(tk.Frame):
             self.text.insert(tk.END, "project_name: " + require.project_name + '\n')
             self.text.insert(tk.END, "unsafe_name: " + require.unsafe_name + '\n')
             self.text.insert(tk.END, '\n')
-
 
 def main_gui_depends():
     g.yindex_d = package_set_load()
