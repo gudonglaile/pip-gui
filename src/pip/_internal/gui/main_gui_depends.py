@@ -14,9 +14,9 @@ from pip._internal.operations.check import (
 
 
 def package_set_load():
-    package_set, parsing_probs = create_package_set_from_installed()
-    missing, conflicting = check_package_set(package_set)
-    return package_set
+    g.package_set, g.parsing_probs = create_package_set_from_installed()
+    g.missing, g.conflicting = check_package_set(g.package_set)
+    return g.package_set
 
 
 class MainWnd(tk.Frame):
@@ -63,6 +63,7 @@ class MainWnd(tk.Frame):
         self.text.tag_config("h1", foreground="black", font=(fontname, 24, 'bold'))
         self.text.tag_config("h2", foreground="black", font=(fontname, 18, 'bold'))
         self.text.tag_config("hyper", foreground="blue", underline=1, font=(fontname, 12, 'bold'))
+        self.text.tag_config("hyper_", foreground="blue", underline=1)
 
         self.text.tag_config("depends", foreground="blue", underline=1, font=(fontname, 12, 'bold'))
         self.text.tag_bind("depends", "<Button-1>", self.on_depends)
@@ -189,10 +190,52 @@ class MainWnd(tk.Frame):
 
         self.render_package(k)
 
+    def render_headings(self):
+        self.text.insert("end", '   ')
+        wx = tk.Button(self.text, text='back', command=lambda: self.on_back_click(None))
+        self.text.window_create("end", window=wx)
+
+        self.text.insert("end", '   ')
+        wx = tk.Button(self.text, text='help', command=self.render_help)
+        self.text.window_create("end", window=wx)
+
+        self.text.insert("end", '   ')
+        wx = tk.Button(self.text, text='check dependencies', command=self.render_check)
+        self.text.window_create("end", window=wx)
+
+        self.text.insert("end", "\n\n")
+
+    def render_check(self):
+        self.text.delete(1.0, tk.END)
+        self.render_headings()
+
+        for project_name in sorted(g.package_set):
+            dependencies = g.missing.get(project_name, [])
+            conflicts = g.conflicting.get(project_name, [])
+            if not dependencies and not conflicts: continue
+
+            version = g.package_set[project_name].version
+            self.text.insert("end", project_name, "depends")
+            self.text.insert("end", " " + version + "\n")
+
+            for dependency in dependencies:
+                self.text.insert("end", "requires %s, which is not installed.\n" % dependency[0]
+                )
+
+            for dep_name, dep_version, req in conflicts:
+                self.text.insert("end", "has requirement %s, but you have %s %s.\n" %
+                                 (req, dep_name, dep_version)
+                )
+            self.text.insert("end", "\n")
+
+        if g.missing or g.conflicting or g.parsing_probs:
+            self.text.insert("end", "\n")
+        else:
+            self.text.insert("end", "No broken requirements found.\n")
+
     def render_help(self):
         self.text.delete(1.0, tk.END)
-
-        self.text.insert(tk.END, "\n\n")
+        self.render_headings()
 
         self.text.insert(tk.END, 'click on label "back" left to the input box:\n', 'help1')
         self.text.insert(tk.END, "back to last key\n\n")
@@ -203,16 +246,16 @@ class MainWnd(tk.Frame):
         self.text.insert(tk.END, 'click on label "*" right to the input box:\n', 'help1')
         self.text.insert(tk.END, "switch to startswith mode\n\n")
 
-        self.text.insert(tk.END, "\n")
-
-        self.text.insert(tk.END, "\n")
+        self.text.insert(tk.END, "\n\n")
 
     def render_package(self, k):
         self.text.delete(1.0, tk.END)
-        pkgd = g.yindex_d.get(k, None)  # type: PackageDeails
-        print(pkgd)
-        self.text.insert(tk.END, k + " " + pkgd.version + '\n\n', "h2")
+        self.render_headings()
 
+        pkgd = g.yindex_d.get(k, None)  # type: PackageDeails
+        # print(pkgd)
+
+        self.text.insert(tk.END, k + " " + pkgd.version + '\n\n', "h2")
         if not pkgd.requires:
             self.text.insert(tk.END, "no depends\n")
             return
@@ -224,6 +267,7 @@ class MainWnd(tk.Frame):
             self.text.insert(tk.END, "project_name: " + require.project_name + '\n')
             self.text.insert(tk.END, "unsafe_name: " + require.unsafe_name + '\n')
             self.text.insert(tk.END, '\n')
+
 
 def main_gui_depends():
     g.yindex_d = package_set_load()
